@@ -8,9 +8,7 @@ No install. Double-click `index.html` or open it from your browser:
 
 **File → Open File → `index.html`**
 
-Then paste the TCP application payload from Wireshark (hex stream or hex dump) and click **Parse Data**. Use **Load sample** to try a built-in telegram.
-
-Copy the TCP application payload, not the full Ethernet/IP frame.
+Then paste the Wireshark hex stream or hex dump and click **Parse Data**. A 54-byte Ethernet/IP/TCP header at the start is skipped automatically, so you can paste the full frame. Use **Load sample** to try a built-in telegram that includes that header.
 
 ## Packet layout
 
