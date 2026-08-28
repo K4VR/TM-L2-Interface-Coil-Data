@@ -2,15 +2,15 @@
 
 Web tool for decoding Level 2 coil telegrams captured from a PLC control interface. Paste Wireshark hex (stream or dump) and export the decoded fields as tab-separated values or CSV.
 
-## Run locally
+## How to use
 
-```bash
-npm install
-npm run dev
-```
+No install. Double-click `index.html` or open it from your browser:
 
-- `npm test` — parser unit tests
-- `npm run build` — production build
+**File → Open File → `index.html`**
+
+Then paste the TCP application payload from Wireshark (hex stream or hex dump) and click **Parse Data**. Use **Load sample** to try a built-in telegram.
+
+Copy the TCP application payload, not the full Ethernet/IP frame.
 
 ## Packet layout
 
@@ -41,5 +41,3 @@ Little-endian binary, 130 bytes minimum:
 | 120 | float32 | Bend Force Reference |
 | 124 | float32 | Bend Target |
 | 128 | uint16 | Gauge Control Mode |
-
-Copy the TCP application payload from Wireshark, not the full Ethernet/IP frame.
