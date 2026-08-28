@@ -82,6 +82,21 @@
         font-size: 0.875rem;
       }
 
+      .skip-note {
+        display: none;
+        margin: -0.5rem 0 1.5rem;
+        padding: 0.75rem 1rem;
+        border-radius: 0.5rem;
+        border: 1px solid #bfdbfe;
+        background: #eff6ff;
+        color: #1d4ed8;
+        font-size: 0.875rem;
+      }
+
+      .skip-note.visible {
+        display: block;
+      }
+
       label {
         display: block;
         margin-bottom: 0.5rem;
@@ -278,8 +293,9 @@
           Paste hex data from Wireshark to convert a Level 2 coil telegram into spreadsheet format.
         </p>
         <p class="hint">
-          Open this file in a browser — no install required. Copy the TCP application payload (hex
-          stream or hex dump). All multi-byte values are little-endian. Ctrl/Cmd+Enter parses.
+          Open this file in a browser — no install required. Paste the Wireshark hex stream or hex
+          dump as captured. A 54-byte Ethernet/IP/TCP header at the start is skipped automatically.
+          All multi-byte values are little-endian. Ctrl/Cmd+Enter parses.
         </p>
 
         <label for="hex-input">Hex Data from Wireshark</label>
@@ -310,6 +326,7 @@
         </div>
 
         <div id="error" class="error" role="alert"></div>
+        <div id="skip-note" class="skip-note"></div>
 
         <div id="results" class="results">
           <div class="export-row">
@@ -380,6 +397,12 @@
       const SAMPLE_HEX =
         '8e0001004e0039300000434f494c2d323032342d3030303031004f52442d39383736353433323100000041434d4520535445454c20434f525000000000000000000000004133360000000000a86100000000424200401c450000003efca9f13d6f12033b6f12033b00002040000048440080bb4400004841000000410000d0400100';
 
+      /** Ethernet (14) + IPv4 (20) + TCP (20) — the prefix Wireshark includes on a full-frame copy. */
+      const FRAME_HEADER_BYTES = 54;
+      const SAMPLE_FRAMED_HEX =
+        'aabbccddeeff0102030405060800450000aa00000000400600000a0000010a000002c35001f600000001000000005018200000000000' +
+        SAMPLE_HEX;
+
       const DUMP_LINE =
         /^\s*(?:0x)?[0-9A-Fa-f]{3,8}:?(?:\s{1,4}|\t)(?:[0-9A-Fa-f]{2}\s+){2,}/;
 
@@ -446,6 +469,60 @@
         return new TextDecoder('ascii').decode(bytes.subarray(start, end)).replace(/\0/g, '').trim();
       }
 
+      function looksLikeEthernetIpv4Tcp(bytes) {
+        if (bytes.length < FRAME_HEADER_BYTES) return false;
+        const etherType = (bytes[12] << 8) | bytes[13];
+        if (etherType !== 0x0800) return false;
+        const version = bytes[14] >> 4;
+        const ihl = bytes[14] & 0x0f;
+        if (version !== 4 || ihl < 5) return false;
+        return bytes[14 + 9] === 6;
+      }
+
+      function tcpPayloadOffset(bytes) {
+        const ihl = bytes[14] & 0x0f;
+        const tcpStart = 14 + ihl * 4;
+        if (bytes.length < tcpStart + 13) return null;
+        const dataOffset = bytes[tcpStart + 12] >> 4;
+        if (dataOffset < 5) return null;
+        return tcpStart + dataOffset * 4;
+      }
+
+      function asciiFieldScore(bytes, start, end) {
+        let score = 0;
+        const last = Math.min(end, bytes.length);
+        for (let i = start; i < last; i++) {
+          const b = bytes[i];
+          if (b === 0) continue;
+          if (b >= 32 && b < 127) score += 1;
+          else score -= 3;
+        }
+        return score;
+      }
+
+      function stripLeadingHeaders(bytes) {
+        if (looksLikeEthernetIpv4Tcp(bytes)) {
+          const offset = tcpPayloadOffset(bytes);
+          if (offset != null && bytes.length - offset >= MIN_COIL_PACKET_BYTES) {
+            return { bytes: bytes.subarray(offset), skipped: offset };
+          }
+        }
+
+        if (bytes.length >= FRAME_HEADER_BYTES + MIN_COIL_PACKET_BYTES) {
+          const payloadScore = asciiFieldScore(bytes, 10, 26);
+          const framedScore = asciiFieldScore(
+            bytes,
+            FRAME_HEADER_BYTES + 10,
+            FRAME_HEADER_BYTES + 26,
+          );
+          if (framedScore > payloadScore) {
+            return { bytes: bytes.subarray(FRAME_HEADER_BYTES), skipped: FRAME_HEADER_BYTES };
+          }
+        }
+
+        return { bytes, skipped: 0 };
+      }
+
       function parseCoilBytes(bytes) {
         if (bytes.length < MIN_COIL_PACKET_BYTES) {
           throw new Error(
@@ -487,7 +564,11 @@
 
       function parseHexData(hexString) {
         try {
-          return parseCoilBytes(hexToBytes(extractHex(hexString)));
+          const stripped = stripLeadingHeaders(hexToBytes(extractHex(hexString)));
+          return {
+            data: parseCoilBytes(stripped.bytes),
+            skipped: stripped.skipped,
+          };
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           if (message.startsWith('Parse error:')) throw err;
@@ -518,6 +599,7 @@
 
       const hexInput = document.getElementById('hex-input');
       const errorEl = document.getElementById('error');
+      const skipNoteEl = document.getElementById('skip-note');
       const resultsEl = document.getElementById('results');
       const resultsBody = document.getElementById('results-body');
       const copyStatus = document.getElementById('copy-status');
@@ -529,6 +611,8 @@
         resultsEl.classList.remove('visible');
         resultsBody.replaceChildren();
         copyStatus.textContent = '';
+        skipNoteEl.textContent = '';
+        skipNoteEl.classList.remove('visible');
       }
 
       function showError(message) {
@@ -551,7 +635,15 @@
         }
 
         try {
-          parsedData = parseHexData(hexInput.value);
+          const parsed = parseHexData(hexInput.value);
+          parsedData = parsed.data;
+          if (parsed.skipped > 0) {
+            skipNoteEl.textContent =
+              'Skipped the first ' +
+              parsed.skipped +
+              ' bytes (Ethernet/IP/TCP header). Offsets below are relative to the coil telegram.';
+            skipNoteEl.classList.add('visible');
+          }
         } catch (err) {
           showError(err instanceof Error ? err.message : String(err));
           return;
@@ -605,7 +697,7 @@
       });
 
       document.getElementById('sample-btn').addEventListener('click', () => {
-        hexInput.value = SAMPLE_HEX;
+        hexInput.value = SAMPLE_FRAMED_HEX;
         clearError();
         hideResults();
       });
