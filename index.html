@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Coil Data Parser</title>
+    <style>
+      :root {
+        --blue: #2563eb;
+        --blue-hover: #1d4ed8;
+        --green: #16a34a;
+        --green-hover: #15803d;
+        --purple: #9333ea;
+        --purple-hover: #7e22ce;
+        --text: #1f2937;
+        --muted: #4b5563;
+        --subtle: #6b7280;
+        --border: #d1d5db;
+        --error-bg: #fef2f2;
+        --error-border: #fecaca;
+        --error-text: #b91c1c;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+        color: var(--text);
+        background: linear-gradient(to bottom right, #0f172a, #1e293b);
+        padding: 2rem;
+      }
+
+      .wrap {
+        max-width: 72rem;
+        margin: 0 auto;
+      }
+
+      .card {
+        background: #fff;
+        border-radius: 0.5rem;
+        box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.35);
+        padding: 2rem;
+      }
+
+      .title-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .title-row h1 {
+        margin: 0;
+        font-size: 1.875rem;
+        font-weight: 700;
+      }
+
+      .icon {
+        width: 2rem;
+        height: 2rem;
+        color: var(--blue);
+        flex-shrink: 0;
+      }
+
+      .icon-sm {
+        width: 1rem;
+        height: 1rem;
+      }
+
+      p.lead {
+        margin: 0 0 0.5rem;
+        color: var(--muted);
+      }
+
+      p.hint {
+        margin: 0 0 1.5rem;
+        color: var(--subtle);
+        font-size: 0.875rem;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+      }
+
+      textarea {
+        width: 100%;
+        height: 8rem;
+        padding: 0.75rem;
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 0.875rem;
+        resize: vertical;
+      }
+
+      textarea:focus {
+        outline: none;
+        border-color: var(--blue);
+        box-shadow: 0 0 0 3px rgb(37 99 235 / 0.25);
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin: 1.5rem 0;
+      }
+
+      button {
+        font: inherit;
+        font-weight: 600;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+      }
+
+      .btn-primary {
+        flex: 1;
+        min-width: 10rem;
+        background: var(--blue);
+        color: #fff;
+        border: none;
+        padding: 0.75rem 1.5rem;
+      }
+
+      .btn-primary:hover {
+        background: var(--blue-hover);
+      }
+
+      .btn-secondary {
+        background: #fff;
+        color: #374151;
+        border: 1px solid var(--border);
+        padding: 0.75rem 1rem;
+      }
+
+      .btn-secondary:hover {
+        background: #f9fafb;
+      }
+
+      .btn-green {
+        background: var(--green);
+        color: #fff;
+        border: none;
+        padding: 0.5rem 1rem;
+      }
+
+      .btn-green:hover {
+        background: var(--green-hover);
+      }
+
+      .btn-purple {
+        background: var(--purple);
+        color: #fff;
+        border: none;
+        padding: 0.5rem 1rem;
+      }
+
+      .btn-purple:hover {
+        background: var(--purple-hover);
+      }
+
+      .error {
+        display: none;
+        margin-bottom: 1.5rem;
+        padding: 0.75rem 1rem;
+        border-radius: 0.5rem;
+        border: 1px solid var(--error-border);
+        background: var(--error-bg);
+        color: var(--error-text);
+      }
+
+      .error.visible {
+        display: block;
+      }
+
+      .results {
+        display: none;
+      }
+
+      .results.visible {
+        display: block;
+      }
+
+      .export-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .copy-status {
+        font-size: 0.875rem;
+        color: #15803d;
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+        background: #f9fafb;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+      }
+
+      .table-wrap h2 {
+        margin: 0 0 1rem;
+        font-size: 1.25rem;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: #fff;
+        box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+      }
+
+      th,
+      td {
+        border: 1px solid #d1d5db;
+        padding: 0.5rem 1rem;
+        text-align: left;
+      }
+
+      thead tr {
+        background: var(--blue);
+        color: #fff;
+      }
+
+      tbody tr:hover {
+        background: #f9fafb;
+      }
+
+      td.mono,
+      th {
+        font-variant-numeric: tabular-nums;
+      }
+
+      td.mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 0.875rem;
+        color: #4b5563;
+      }
+
+      td.muted {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 0.875rem;
+        color: #6b7280;
+      }
+
+      td.field {
+        font-weight: 500;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <div class="title-row">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+          <h1>Coil Data Parser</h1>
+        </div>
+
+        <p class="lead">
+          Paste hex data from Wireshark to convert a Level 2 coil telegram into spreadsheet format.
+        </p>
+        <p class="hint">
+          Open this file in a browser — no install required. Copy the TCP application payload (hex
+          stream or hex dump). All multi-byte values are little-endian. Ctrl/Cmd+Enter parses.
+        </p>
+
+        <label for="hex-input">Hex Data from Wireshark</label>
+        <textarea
+          id="hex-input"
+          placeholder="Paste hex string here (e.g., 8e0001004e000000...)"
+          spellcheck="false"
+        ></textarea>
+
+        <div class="actions">
+          <button type="button" class="btn-primary" id="parse-btn">Parse Data</button>
+          <button type="button" class="btn-secondary" id="sample-btn">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M10 2v7.527a2 2 0 0 1-.211.753L4.79 20.284A2 2 0 0 0 6.574 23h10.852a2 2 0 0 0 1.784-2.716l-4.999-10.004A2 2 0 0 1 14 9.527V2" />
+              <path d="M8.5 2h7" />
+              <path d="M7 16h10" />
+            </svg>
+            Load sample
+          </button>
+          <button type="button" class="btn-secondary" id="clear-btn">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21" />
+              <path d="M22 21H7" />
+              <path d="m5 11 9 9" />
+            </svg>
+            Clear
+          </button>
+        </div>
+
+        <div id="error" class="error" role="alert"></div>
+
+        <div id="results" class="results">
+          <div class="export-row">
+            <button type="button" class="btn-green" id="copy-btn">
+              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+              </svg>
+              Copy as Tab-Separated
+            </button>
+            <button type="button" class="btn-purple" id="csv-btn">
+              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              Download CSV
+            </button>
+            <span id="copy-status" class="copy-status"></span>
+          </div>
+
+          <div class="table-wrap">
+            <h2>Parsed Data</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Byte Offset</th>
+                  <th>Field</th>
+                  <th>Type</th>
+                  <th>Value</th>
+                </tr>
+              </thead>
+              <tbody id="results-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const MIN_COIL_PACKET_BYTES = 130;
+
+      const COIL_FIELDS = [
+        { key: 'msgNumber', offset: 0, name: 'Msg Number', csvName: 'Msg Number', typeLabel: 'uint16', format: 'int' },
+        { key: 'wordLength', offset: 2, name: 'Word Length', csvName: 'Word Length', typeLabel: 'uint16', format: 'int' },
+        { key: 'seqNumber', offset: 4, name: 'Sequence Number', csvName: 'Word Sequence Number', typeLabel: 'uint16', format: 'int' },
+        { key: 'schedule', offset: 6, name: 'Schedule', csvName: 'Long Schedule', typeLabel: 'uint32', format: 'int' },
+        { key: 'coilNumber', offset: 10, name: 'Coil Number', csvName: 'Long Coil Number', typeLabel: 'char[16]', format: 'string' },
+        { key: 'orderNumber', offset: 26, name: 'Order Number', csvName: 'Order number', typeLabel: 'char[16]', format: 'string' },
+        { key: 'customer', offset: 42, name: 'Customer', csvName: 'Customer', typeLabel: 'char[26]', format: 'string' },
+        { key: 'grade', offset: 68, name: 'Grade', csvName: 'Grade', typeLabel: 'char[6]', format: 'string' },
+        { key: 'weight', offset: 76, name: 'Weight', csvName: 'Weight', typeLabel: 'int32', format: 'int' },
+        { key: 'entryWidth', offset: 80, name: 'Entry Width', csvName: 'Entry Width Single', typeLabel: 'float32', format: 'float3' },
+        { key: 'entryLength', offset: 84, name: 'Entry Length', csvName: 'Entry Length Single', typeLabel: 'float32', format: 'float3' },
+        { key: 'entryGauge', offset: 88, name: 'Entry Gauge', csvName: 'Entry Gauge Single', typeLabel: 'float32', format: 'float6' },
+        { key: 'targetGauge', offset: 92, name: 'Target Gauge', csvName: 'Target Gauge Single', typeLabel: 'float32', format: 'float6' },
+        { key: 'plusGaugeTol', offset: 96, name: 'Plus Gauge Tolerance', csvName: 'Plus Gauge Tolerance Single', typeLabel: 'float32', format: 'float6' },
+        { key: 'minusGaugeTol', offset: 100, name: 'Minus Gauge Tolerance', csvName: 'Minus Gauge Tolerance Single', typeLabel: 'float32', format: 'float6' },
+        { key: 'elongationTarget', offset: 104, name: 'Elongation Target', csvName: 'Elongation target Single', typeLabel: 'float32', format: 'float3' },
+        { key: 'speedTarget', offset: 108, name: 'Speed Target', csvName: 'Speed Target Single', typeLabel: 'float32', format: 'float3' },
+        { key: 'rollingForce', offset: 112, name: 'Rolling Force', csvName: 'Rolling Force Single', typeLabel: 'float32', format: 'float3' },
+        { key: 'entryTension', offset: 116, name: 'Entry Tension', csvName: 'Entry Tension Single', typeLabel: 'float32', format: 'float3' },
+        { key: 'bendForceRef', offset: 120, name: 'Bend Force Reference', csvName: 'Bend Force Reference Single', typeLabel: 'float32', format: 'float3' },
+        { key: 'bendTarget', offset: 124, name: 'Bend Target', csvName: 'Bend Target Single', typeLabel: 'float32', format: 'float3' },
+        { key: 'gaugeControlMode', offset: 128, name: 'Gauge Control Mode', csvName: 'Gauge Control Mode Word', typeLabel: 'uint16', format: 'int' },
+      ];
+
+      const SAMPLE_HEX =
+        '8e0001004e0039300000434f494c2d323032342d3030303031004f52442d39383736353433323100000041434d4520535445454c20434f525000000000000000000000004133360000000000a86100000000424200401c450000003efca9f13d6f12033b6f12033b00002040000048440080bb4400004841000000410000d0400100';
+
+      const DUMP_LINE =
+        /^\s*(?:0x)?[0-9A-Fa-f]{3,8}:?(?:\s{1,4}|\t)(?:[0-9A-Fa-f]{2}\s+){2,}/;
+
+      function looksLikeHexDump(text) {
+        const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
+        if (lines.length === 0) return false;
+        const dumpLines = lines.filter((line) => DUMP_LINE.test(line));
+        return dumpLines.length >= Math.max(1, Math.ceil(lines.length * 0.5));
+      }
+
+      function hexFromDump(text) {
+        const parts = [];
+        for (const rawLine of text.split(/\r?\n/)) {
+          const line = rawLine.trim();
+          if (!line) continue;
+          const offsetMatch = line.match(/^(?:0x)?[0-9A-Fa-f]{3,8}:?[ \t]+(.*)$/);
+          if (!offsetMatch) continue;
+
+          const hexBytes = [];
+          for (const token of offsetMatch[1].split(/[ \t]+/)) {
+            if (!/^[0-9A-Fa-f]{2}$/.test(token)) break;
+            hexBytes.push(token);
+            if (hexBytes.length >= 16) break;
+          }
+          if (hexBytes.length > 0) parts.push(hexBytes.join(''));
+        }
+        if (parts.length === 0) {
+          throw new Error('Could not find hex bytes in Wireshark dump.');
+        }
+        return parts.join('');
+      }
+
+      function hexFromStream(text) {
+        return text.replace(/0x/gi, '').replace(/[\s,;:_-]/g, '');
+      }
+
+      function extractHex(input) {
+        const trimmed = input.trim();
+        if (!trimmed) throw new Error('Please enter hex data from Wireshark');
+
+        const compact = looksLikeHexDump(trimmed) ? hexFromDump(trimmed) : hexFromStream(trimmed);
+
+        if (!/^[0-9A-Fa-f]*$/.test(compact)) {
+          throw new Error('Invalid hex string. Only hexadecimal characters (0-9, A-F) are allowed.');
+        }
+        if (compact.length % 2 !== 0) {
+          throw new Error('Hex string must have an even number of characters.');
+        }
+        if (compact.length === 0) {
+          throw new Error('Please enter hex data from Wireshark');
+        }
+        return compact.toLowerCase();
+      }
+
+      function hexToBytes(hex) {
+        const bytes = new Uint8Array(hex.length / 2);
+        for (let i = 0; i < bytes.length; i++) {
+          bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+        }
+        return bytes;
+      }
+
+      function readAscii(bytes, start, end) {
+        return new TextDecoder('ascii').decode(bytes.subarray(start, end)).replace(/\0/g, '').trim();
+      }
+
+      function parseCoilBytes(bytes) {
+        if (bytes.length < MIN_COIL_PACKET_BYTES) {
+          throw new Error(
+            'Packet is ' +
+              bytes.length +
+              ' bytes; coil data requires at least ' +
+              MIN_COIL_PACKET_BYTES +
+              ' bytes (offsets 0–129).',
+          );
+        }
+
+        const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+        const le = true;
+        return {
+          msgNumber: view.getUint16(0, le),
+          wordLength: view.getUint16(2, le),
+          seqNumber: view.getUint16(4, le),
+          schedule: view.getUint32(6, le),
+          coilNumber: readAscii(bytes, 10, 26),
+          orderNumber: readAscii(bytes, 26, 42),
+          customer: readAscii(bytes, 42, 68),
+          grade: readAscii(bytes, 68, 74),
+          weight: view.getInt32(76, le),
+          entryWidth: view.getFloat32(80, le),
+          entryLength: view.getFloat32(84, le),
+          entryGauge: view.getFloat32(88, le),
+          targetGauge: view.getFloat32(92, le),
+          plusGaugeTol: view.getFloat32(96, le),
+          minusGaugeTol: view.getFloat32(100, le),
+          elongationTarget: view.getFloat32(104, le),
+          speedTarget: view.getFloat32(108, le),
+          rollingForce: view.getFloat32(112, le),
+          entryTension: view.getFloat32(116, le),
+          bendForceRef: view.getFloat32(120, le),
+          bendTarget: view.getFloat32(124, le),
+          gaugeControlMode: view.getUint16(128, le),
+        };
+      }
+
+      function parseHexData(hexString) {
+        try {
+          return parseCoilBytes(hexToBytes(extractHex(hexString)));
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          if (message.startsWith('Parse error:')) throw err;
+          throw new Error('Parse error: ' + message);
+        }
+      }
+
+      function formatFieldValue(data, field) {
+        const value = data[field.key];
+        if (field.format === 'string' || field.format === 'int') return String(value);
+        return field.format === 'float6' ? value.toFixed(6) : value.toFixed(3);
+      }
+
+      function csvEscape(value) {
+        if (/[",\n\r]/.test(value)) return '"' + value.replace(/"/g, '""') + '"';
+        return value;
+      }
+
+      function toTabSeparated(data) {
+        return COIL_FIELDS.map((field) => formatFieldValue(data, field)).join('\t');
+      }
+
+      function toCsv(data) {
+        const headers = COIL_FIELDS.map((field) => csvEscape(field.csvName)).join(',');
+        const values = COIL_FIELDS.map((field) => csvEscape(formatFieldValue(data, field))).join(',');
+        return headers + '\n' + values + '\n';
+      }
+
+      const hexInput = document.getElementById('hex-input');
+      const errorEl = document.getElementById('error');
+      const resultsEl = document.getElementById('results');
+      const resultsBody = document.getElementById('results-body');
+      const copyStatus = document.getElementById('copy-status');
+
+      let parsedData = null;
+
+      function hideResults() {
+        parsedData = null;
+        resultsEl.classList.remove('visible');
+        resultsBody.replaceChildren();
+        copyStatus.textContent = '';
+      }
+
+      function showError(message) {
+        errorEl.textContent = message;
+        errorEl.classList.add('visible');
+      }
+
+      function clearError() {
+        errorEl.textContent = '';
+        errorEl.classList.remove('visible');
+      }
+
+      function handleParse() {
+        clearError();
+        hideResults();
+
+        if (!hexInput.value.trim()) {
+          showError('Please enter hex data from Wireshark');
+          return;
+        }
+
+        try {
+          parsedData = parseHexData(hexInput.value);
+        } catch (err) {
+          showError(err instanceof Error ? err.message : String(err));
+          return;
+        }
+
+        const rows = COIL_FIELDS.map((field) => {
+          const tr = document.createElement('tr');
+          const cells = [
+            ['mono', String(field.offset)],
+            ['field', field.name],
+            ['muted', field.typeLabel],
+            ['', formatFieldValue(parsedData, field)],
+          ];
+          for (const [cls, text] of cells) {
+            const td = document.createElement('td');
+            if (cls) td.className = cls;
+            td.textContent = text;
+            tr.appendChild(td);
+          }
+          return tr;
+        });
+        resultsBody.replaceChildren(...rows);
+        resultsEl.classList.add('visible');
+      }
+
+      function copyText(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+          return navigator.clipboard.writeText(text);
+        }
+        return new Promise((resolve, reject) => {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.setAttribute('readonly', '');
+          ta.style.position = 'fixed';
+          ta.style.left = '-9999px';
+          document.body.appendChild(ta);
+          ta.select();
+          const ok = document.execCommand('copy');
+          ta.remove();
+          if (ok) resolve();
+          else reject(new Error('copy failed'));
+        });
+      }
+
+      document.getElementById('parse-btn').addEventListener('click', handleParse);
+      hexInput.addEventListener('keydown', (event) => {
+        if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+          event.preventDefault();
+          handleParse();
+        }
+      });
+
+      document.getElementById('sample-btn').addEventListener('click', () => {
+        hexInput.value = SAMPLE_HEX;
+        clearError();
+        hideResults();
+      });
+
+      document.getElementById('clear-btn').addEventListener('click', () => {
+        hexInput.value = '';
+        clearError();
+        hideResults();
+      });
+
+      document.getElementById('copy-btn').addEventListener('click', async () => {
+        if (!parsedData) return;
+        const text = toTabSeparated(parsedData);
+        try {
+          await copyText(text);
+          copyStatus.textContent = 'Copied tab-separated values';
+        } catch {
+          window.prompt('Copy tab-separated values:', text);
+          copyStatus.textContent = 'Select and copy the values';
+        }
+      });
+
+      document.getElementById('csv-btn').addEventListener('click', () => {
+        if (!parsedData) return;
+        const blob = new Blob([toCsv(parsedData)], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'coil_data.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      });
+    </script>
+  </body>
+</html>
